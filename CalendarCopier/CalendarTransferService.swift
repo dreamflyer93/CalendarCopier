@@ -103,6 +103,11 @@ final class CalendarTransferService: ObservableObject {
             return
         }
 
+        guard !isBusy else {
+            statusMessage = "Please wait for the current preview or transfer to finish."
+            return
+        }
+
         isBusy = true
         lastReport = nil
         statusMessage = "Copying in the background. Events remain on this iPhone."
@@ -291,8 +296,7 @@ private final class CalendarTransferWorker: @unchecked Sendable {
         // item. That gives us the original series anchor date rather than rebasing its
         // recurrence rule on whichever occurrence happened to be enumerated first.
         let masterEvent: EKEvent
-        if let identifier = sourceEvent.eventIdentifier,
-           let firstOccurrence = eventStore.event(withIdentifier: identifier) {
+        if let firstOccurrence = eventStore.calendarItem(withIdentifier: sourceEvent.calendarItemIdentifier) as? EKEvent {
             masterEvent = firstOccurrence
         } else {
             masterEvent = sourceEvent
