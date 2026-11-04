@@ -1,7 +1,10 @@
 import Foundation
 import Combine
+import CryptoKit
 import EventKit
 
+/// Copies events only between calendars whose EventKit source is local to this device.
+/// No networking, analytics, remote logging, or third-party SDKs are used by this target.
 @MainActor
 final class CalendarTransferService: ObservableObject {
     @Published private(set) var calendars: [EKCalendar] = []
@@ -12,7 +15,7 @@ final class CalendarTransferService: ObservableObject {
     @Published private(set) var lastReport: TransferReport?
 
     private let store = EKEventStore()
-    private let defaultsKey = "CalendarCopier.completedSourceOccurrences.v1"
+    private let historyFileName = "completed-occurrences.plist"
 
     struct TransferReport {
         let copied: Int
@@ -29,45 +32,52 @@ final class CalendarTransferService: ObservableObject {
                 statusMessage = "Calendar access was not granted. Enable it in Settings to use Calendar Copier."
                 return
             }
+
             reloadCalendars()
             statusMessage = calendars.isEmpty
-                ? "No calendars were found. Add an account in iPhone Settings > Calendar > Accounts."
-                : "Choose a source and destination calendar."
+                ? "No local calendars were found. Create an On My iPhone calendar in Calendar."
+                : "Choose two local calendars stored on this iPhone."
         } catch {
             statusMessage = "Could not request calendar access: \(error.localizedDescription)"
         }
     }
 
+    /// Deliberately hides iCloud, Google/CalDAV, Exchange, subscribed, and other non-local calendars.
     func reloadCalendars() {
-        calendars = store.calendars(for: .event).sorted {
-            if $0.source.title == $1.source.title {
-                return $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
-            }
-            return $0.source.title.localizedCaseInsensitiveCompare($1.source.title) == .orderedAscending
-        }
+        calendars = store.calendars(for: .event)
+            .filter { isLocalCalendar($0) }
+            .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
     }
 
     func preview(source: EKCalendar?, destination: EKCalendar?) {
-        guard let source, let destination, source.calendarIdentifier != destination.calendarIdentifier else {
+        guard validateLocalCalendars(source: source, destination: destination) else {
             previewCount = 0
             return
         }
+        guard let source else {
+            previewCount = 0
+            return
+        }
+
         let (start, end) = transferDateBounds()
         let predicate = store.predicateForEvents(withStart: start, end: end, calendars: [source])
         previewCount = store.events(matching: predicate).count
+        statusMessage = "\(previewCount) source events found in the supported date range."
     }
 
     func copyAllEvents(source: EKCalendar?, destination: EKCalendar?) async {
-        guard let source, let destination else {
-            statusMessage = "Choose both calendars."
+        guard validateLocalCalendars(source: source, destination: destination),
+              let source, let destination else {
             return
         }
+
         guard source.calendarIdentifier != destination.calendarIdentifier else {
-            statusMessage = "Choose two different calendars."
+            statusMessage = "Choose two different local calendars."
             return
         }
+
         guard destination.allowsContentModifications else {
-            statusMessage = "The destination calendar is read-only. Choose a writable calendar."
+            statusMessage = "The destination calendar is read-only. Choose a writable local calendar."
             return
         }
 
@@ -78,12 +88,21 @@ final class CalendarTransferService: ObservableObject {
         let (start, end) = transferDateBounds()
         let predicate = store.predicateForEvents(withStart: start, end: end, calendars: [source])
         let events = store.events(matching: predicate).sorted { $0.startDate < $1.startDate }
+        previewCount = events.count
 
-        var completed = loadCompletedKeys()
+        var completed: Set<String>
+        do {
+            completed = try loadCompletedKeys()
+        } catch {
+            statusMessage = "The local duplicate-prevention history could not be read. No events were copied. Reinstalling or clearing app data may reset this history."
+            return
+        }
+
         var copied = 0
         var skipped = 0
         var failed = 0
         var details: [String] = []
+        var stoppedBecauseHistoryCouldNotBeSaved = false
 
         for (index, sourceEvent) in events.enumerated() {
             let key = occurrenceKey(event: sourceEvent, sourceCalendarID: source.calendarIdentifier)
@@ -92,48 +111,92 @@ final class CalendarTransferService: ObservableObject {
                 continue
             }
 
-            let destinationEvent = EKEvent(eventStore: store)
-            destinationEvent.calendar = destination
-            destinationEvent.title = sourceEvent.title
-            destinationEvent.startDate = sourceEvent.startDate
-            destinationEvent.endDate = sourceEvent.endDate
-            destinationEvent.isAllDay = sourceEvent.isAllDay
-            destinationEvent.timeZone = sourceEvent.timeZone
-            destinationEvent.location = sourceEvent.location
-            destinationEvent.notes = sourceEvent.notes
-            destinationEvent.url = sourceEvent.url
-            destinationEvent.availability = sourceEvent.availability
-            destinationEvent.alarms = sourceEvent.alarms?.map { alarm in
-                if let absoluteDate = alarm.absoluteDate {
-                    return EKAlarm(absoluteDate: absoluteDate)
-                }
-                return EKAlarm(relativeOffset: alarm.relativeOffset)
-            }
-
-            // Recurring events are flattened to individual occurrences for this MVP.
-            destinationEvent.recurrenceRules = nil
+            let destinationEvent = makeCopy(of: sourceEvent, in: destination)
 
             do {
+                // Saving to a local source avoids writing event content to an iCloud,
+                // Exchange, CalDAV, or other provider-managed calendar.
                 try store.save(destinationEvent, span: .thisEvent, commit: true)
-                completed.insert(key)
                 copied += 1
             } catch {
                 failed += 1
-                if details.count < 20 {
-                    details.append("\(sourceEvent.title ?? "Untitled"): \(error.localizedDescription)")
+                if details.count < 10 {
+                    details.append("An event could not be copied: \(error.localizedDescription)")
                 }
+                continue
             }
 
-            if index % 50 == 0 {
-                statusMessage = "Copying \(index + 1) of \(events.count)…"
+            completed.insert(key)
+            do {
+                // Persist after each event so an app interruption is less likely to
+                // cause already-saved events to be copied again on the next run.
+                try saveCompletedKeys(completed)
+            } catch {
+                stoppedBecauseHistoryCouldNotBeSaved = true
+                details.append("Stopped early: the local duplicate-prevention history could not be saved. Check the destination before retrying.")
+                break
+            }
+
+            if index % 25 == 0 {
+                statusMessage = "Copying local events… \(copied + skipped + failed) of \(events.count) processed."
                 await Task.yield()
             }
         }
 
-        saveCompletedKeys(completed)
-        let report = TransferReport(copied: copied, skipped: skipped, failed: failed, details: details)
+        let report = TransferReport(
+            copied: copied,
+            skipped: skipped,
+            failed: failed,
+            details: details
+        )
         lastReport = report
-        statusMessage = "Finished. \(copied) copied, \(skipped) already copied, \(failed) failed."
+
+        if stoppedBecauseHistoryCouldNotBeSaved {
+            statusMessage = "Stopped after \(copied) copied. Check the destination before retrying; duplicate protection could not be updated."
+        } else {
+            statusMessage = "Finished. \(copied) copied, \(skipped) already copied, \(failed) failed."
+        }
+    }
+
+    private func isLocalCalendar(_ calendar: EKCalendar) -> Bool {
+        calendar.source.sourceType == .local
+    }
+
+    @discardableResult
+    private func validateLocalCalendars(source: EKCalendar?, destination: EKCalendar?) -> Bool {
+        guard let source, let destination else {
+            statusMessage = "Choose both calendars."
+            return false
+        }
+        guard isLocalCalendar(source), isLocalCalendar(destination) else {
+            statusMessage = "Privacy protection: only calendars stored locally on this iPhone can be used."
+            return false
+        }
+        return true
+    }
+
+    private func makeCopy(of sourceEvent: EKEvent, in destination: EKCalendar) -> EKEvent {
+        let destinationEvent = EKEvent(eventStore: store)
+        destinationEvent.calendar = destination
+        destinationEvent.title = sourceEvent.title
+        destinationEvent.startDate = sourceEvent.startDate
+        destinationEvent.endDate = sourceEvent.endDate
+        destinationEvent.isAllDay = sourceEvent.isAllDay
+        destinationEvent.timeZone = sourceEvent.timeZone
+        destinationEvent.location = sourceEvent.location
+        destinationEvent.notes = sourceEvent.notes
+        destinationEvent.url = sourceEvent.url
+        destinationEvent.availability = sourceEvent.availability
+        destinationEvent.alarms = sourceEvent.alarms?.map { alarm in
+            if let absoluteDate = alarm.absoluteDate {
+                return EKAlarm(absoluteDate: absoluteDate)
+            }
+            return EKAlarm(relativeOffset: alarm.relativeOffset)
+        }
+
+        // Recurring source events are currently flattened to individual occurrences.
+        destinationEvent.recurrenceRules = nil
+        return destinationEvent
     }
 
     private func transferDateBounds() -> (Date, Date) {
@@ -144,17 +207,69 @@ final class CalendarTransferService: ObservableObject {
         return (start, end)
     }
 
+    /// Hashes identifiers before writing them to local app storage; no event text is stored here.
     private func occurrenceKey(event: EKEvent, sourceCalendarID: String) -> String {
         let itemID = event.calendarItemIdentifier
-        let start = Int(event.startDate.timeIntervalSince1970)
-        return "\(sourceCalendarID)|\(itemID)|\(start)"
+        let start = String(Int64(event.startDate.timeIntervalSince1970))
+        let identity = "\(sourceCalendarID)|\(itemID)|\(start)"
+        let digest = SHA256.hash(data: Data(identity.utf8))
+        return digest.map { String(format: "%02x", $0) }.joined()
     }
 
-    private func loadCompletedKeys() -> Set<String> {
-        Set(UserDefaults.standard.stringArray(forKey: defaultsKey) ?? [])
+    /// The Caches directory is used intentionally: this small, disposable ledger is not
+    /// essential user data and should not be included in device backups. iOS may purge it,
+    /// in which case duplicate suppression may reset.
+    private func historyFileURL() throws -> URL {
+        let fileManager = FileManager.default
+        guard let cachesDirectory = fileManager.urls(
+            for: .cachesDirectory,
+            in: .userDomainMask
+        ).first else {
+            throw HistoryError.storageUnavailable
+        }
+
+        let appCacheDirectory = cachesDirectory.appendingPathComponent(
+            "CalendarCopier",
+            isDirectory: true
+        )
+        try fileManager.createDirectory(
+            at: appCacheDirectory,
+            withIntermediateDirectories: true
+        )
+
+        var directoryValues = URLResourceValues()
+        directoryValues.isExcludedFromBackup = true
+        var mutableDirectoryURL = appCacheDirectory
+        try mutableDirectoryURL.setResourceValues(directoryValues)
+
+        return appCacheDirectory.appendingPathComponent(historyFileName)
     }
 
-    private func saveCompletedKeys(_ keys: Set<String>) {
-        UserDefaults.standard.set(Array(keys), forKey: defaultsKey)
+    private func loadCompletedKeys() throws -> Set<String> {
+        let url = try historyFileURL()
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            return []
+        }
+        let data = try Data(contentsOf: url)
+        let values = try PropertyListDecoder().decode([String].self, from: data)
+        return Set(values)
+    }
+
+    private func saveCompletedKeys(_ keys: Set<String>) throws {
+        let url = try historyFileURL()
+        let data = try PropertyListEncoder().encode(keys.sorted())
+
+        // Complete file protection makes the ledger inaccessible while the iPhone is locked.
+        try data.write(to: url, options: [.atomic, .completeFileProtection])
+
+        // Reapply after every write because atomic replacement may reset resource values.
+        var fileValues = URLResourceValues()
+        fileValues.isExcludedFromBackup = true
+        var mutableFileURL = url
+        try mutableFileURL.setResourceValues(fileValues)
+    }
+
+    private enum HistoryError: Error {
+        case storageUnavailable
     }
 }
