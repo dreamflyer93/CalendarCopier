@@ -307,6 +307,7 @@ private final class CalendarTransferWorker: @unchecked Sendable {
         } else {
             try processSingleEvent(
                 sourceEvent,
+                eventStore: eventStore,
                 destination: destination,
                 historyDirectory: historyDirectory,
                 counts: counts
@@ -338,7 +339,7 @@ private final class CalendarTransferWorker: @unchecked Sendable {
         )
 
         if !FileManager.default.fileExists(atPath: seriesMarker.path) {
-            let destinationSeries = makeCopy(of: masterEvent, in: destination)
+            let destinationSeries = makeCopy(of: masterEvent, in: destination, eventStore: eventStore)
             destinationSeries.recurrenceRules = recurrenceRules
             try eventStore.save(destinationSeries, span: .thisEvent, commit: true)
             try writeCompletionMarker(at: seriesMarker)
@@ -415,6 +416,7 @@ private final class CalendarTransferWorker: @unchecked Sendable {
 
     private func processSingleEvent(
         _ sourceEvent: EKEvent,
+        eventStore: EKEventStore,
         destination: EKCalendar,
         historyDirectory: URL,
         counts: Counts
@@ -431,14 +433,14 @@ private final class CalendarTransferWorker: @unchecked Sendable {
             return
         }
 
-        let destinationEvent = makeCopy(of: sourceEvent, in: destination)
-        try EKEventStoreFor(destinationEvent).saveSingleEvent()
+        let destinationEvent = makeCopy(of: sourceEvent, in: destination, eventStore: eventStore)
+        try eventStore.save(destinationEvent, span: .thisEvent, commit: true)
         try writeCompletionMarker(at: marker)
         counts.copied += 1
     }
 
-    private func makeCopy(of source: EKEvent, in destination: EKCalendar) -> EKEvent {
-        let copy = EKEvent(eventStore: destination.eventStore)
+    private func makeCopy(of source: EKEvent, in destination: EKCalendar, eventStore: EKEventStore) -> EKEvent {
+        let copy = EKEvent(eventStore: eventStore)
         copy.calendar = destination
         copyMutableFields(from: source, to: copy)
         copy.recurrenceRules = source.recurrenceRules
@@ -619,14 +621,3 @@ private final class CalendarTransferWorker: @unchecked Sendable {
     }
 }
 
-// Helper keeps single-event saving on the same EKEventStore instance that created the
-// new EKEvent. The store is recovered from EventKit's event object only through this
-// private wrapper; no provider API or network client is involved.
-private struct EKEventStoreFor {
-    let event: EKEvent
-    init(_ event: EKEvent) { self.event = event }
-    func saveSingleEvent() throws {
-        guard let store = event.eventStore else { throw NSError(domain: "CalendarCopier", code: 1) }
-        try store.save(event, span: .thisEvent, commit: true)
-    }
-}
