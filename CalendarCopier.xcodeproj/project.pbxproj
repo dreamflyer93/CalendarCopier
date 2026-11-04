@@ -9,7 +9,7 @@
 		A10000000000000000000031 /* CalendarCopierApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000011 /* CalendarCopierApp.swift */; };
 		A10000000000000000000032 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000012 /* ContentView.swift */; };
 		A10000000000000000000033 /* CalendarTransferService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000013 /* CalendarTransferService.swift */; };
-		A10000000000000000000034 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000015 /* PrivacyInfo.xcprivacy */; };
+		A10000000000000000000034 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000035 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -18,7 +18,7 @@
 		A10000000000000000000012 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		A10000000000000000000013 /* CalendarTransferService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTransferService.swift; sourceTree = "<group>"; };
 		A10000000000000000000014 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		A10000000000000000000015 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		A10000000000000000000035 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -29,7 +29,7 @@
 		A10000000000000000000003 = {isa = PBXGroup; children = (A10000000000000000000005, A10000000000000000000006, A10000000000000000000004,); sourceTree = "<group>"; };
 		A10000000000000000000004 /* Products */ = {isa = PBXGroup; children = (A10000000000000000000007,); name = Products; sourceTree = "<group>"; };
 		A10000000000000000000005 /* Sources */ = {isa = PBXGroup; children = (A10000000000000000000011, A10000000000000000000012, A10000000000000000000013,); path = CalendarCopier; sourceTree = "<group>"; };
-		A10000000000000000000006 /* Supporting Files */ = {isa = PBXGroup; children = (A10000000000000000000014,); name = "Supporting Files"; path = CalendarCopier; sourceTree = "<group>"; };
+		A10000000000000000000006 /* Supporting Files */ = {isa = PBXGroup; children = (A10000000000000000000014, A10000000000000000000035 /* PrivacyInfo.xcprivacy */,); name = "Supporting Files"; path = CalendarCopier; sourceTree = "<group>"; };
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
