@@ -181,6 +181,7 @@ private final class CalendarTransferWorker: @unchecked Sendable {
         var recurringSeriesCopied = 0
         var detachedOccurrencesUpdated = 0
         var eventsScanned = 0
+        var seriesIdentifiersSeen: Set<String> = []
         var details: [String] = []
 
         func addDetail(_ detail: String) {
@@ -342,13 +343,18 @@ private final class CalendarTransferWorker: @unchecked Sendable {
             directory: historyDirectory
         )
 
-        if !FileManager.default.fileExists(atPath: seriesMarker.path) {
-            let destinationSeries = makeCopy(of: masterEvent, in: destination, eventStore: eventStore)
-            destinationSeries.recurrenceRules = recurrenceRules
-            try eventStore.save(destinationSeries, span: .thisEvent, commit: true)
-            try writeCompletionMarker(at: seriesMarker)
-            counts.copied += 1
-            counts.recurringSeriesCopied += 1
+        let firstOccurrenceSeenThisRun = counts.seriesIdentifiersSeen.insert(seriesIdentifier).inserted
+        if firstOccurrenceSeenThisRun {
+            if FileManager.default.fileExists(atPath: seriesMarker.path) {
+                counts.skipped += 1
+            } else {
+                let destinationSeries = makeCopy(of: masterEvent, in: destination, eventStore: eventStore)
+                destinationSeries.recurrenceRules = recurrenceRules
+                try eventStore.save(destinationSeries, span: .thisEvent, commit: true)
+                try writeCompletionMarker(at: seriesMarker)
+                counts.copied += 1
+                counts.recurringSeriesCopied += 1
+            }
         }
 
         // A detached occurrence is an edited exception to the repeating series.
@@ -381,6 +387,7 @@ private final class CalendarTransferWorker: @unchecked Sendable {
         let identity = "\(sourceCalendarID)|\(destinationCalendarID)|\(seriesIdentifier)|\(Int64(originalOccurrenceDate.timeIntervalSince1970))"
         let marker = markerURL(kind: "exception", identity: identity, directory: historyDirectory)
         if FileManager.default.fileExists(atPath: marker.path) {
+            counts.skipped += 1
             return
         }
 
