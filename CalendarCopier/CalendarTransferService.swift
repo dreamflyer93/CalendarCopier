@@ -56,31 +56,34 @@ final class CalendarTransferService: ObservableObject {
             .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
     }
 
-    func preview(source: EKCalendar?, destination: EKCalendar?) async {
+    func preview(source: EKCalendar?, destination: EKCalendar?) {
         guard validateLocalDestinationAndAllowedSource(source: source, destination: destination),
               let source, let destination else {
             previewCount = 0
             return
         }
 
+        guard !isBusy else { return }
         isBusy = true
         statusMessage = "Counting source events in the background…"
-        defer { isBusy = false }
 
         let worker = CalendarTransferWorker(
             sourceCalendarID: source.calendarIdentifier,
             destinationCalendarID: destination.calendarIdentifier
         )
 
-        do {
-            let count = try await Task.detached(priority: .userInitiated) {
-                try worker.countEvents()
-            }.value
-            previewCount = count
-            statusMessage = "\(count) source events found in the supported date range."
-        } catch {
-            previewCount = 0
-            statusMessage = "Could not count source events: \(error.localizedDescription)"
+        Task { @MainActor in
+            defer { isBusy = false }
+            do {
+                let count = try await Task.detached(priority: .userInitiated) {
+                    try worker.countEvents()
+                }.value
+                previewCount = count
+                statusMessage = "\(count) source events found in the supported date range."
+            } catch {
+                previewCount = 0
+                statusMessage = "Could not count source events: \(error.localizedDescription)"
+            }
         }
     }
 
