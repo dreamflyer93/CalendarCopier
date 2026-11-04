@@ -26,7 +26,7 @@ The GitHub Actions workflow in `.github/workflows/build-unsigned-ipa.yml` builds
 - Recurrence instances are copied as separate events, not as their original recurrence series and exceptions.
 - The scan range is 1 January 1900 through 1 January 2101.
 - Attendees, organiser identity, RSVP state, and provider-specific invitation metadata are not copied.
-- Duplicate protection remembers successful source occurrences per destination. Its cache is disposable and does not detect similar events already present in the destination.
+- Duplicate protection remembers successful source occurrences per destination using hashed marker filenames. Its cache is disposable and does not detect similar events already present in the destination. A force-quit or system interruption in the very small interval after EventKit saves an event but before its marker is written can still cause that one event to be copied again on retry.
 - The app requests full EventKit calendar access because it must read source events and create destination events.
 - Event fetching currently materialises the full date-range result in memory; very large calendars may take time or consume substantial memory.
 - Test with a small calendar before transferring an important calendar.
