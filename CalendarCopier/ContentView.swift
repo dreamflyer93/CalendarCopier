@@ -148,6 +148,7 @@ struct ContentView: View {
                         await service.copyAllEvents(source: sourceCalendar, destination: destinationCalendar)
                     }
                 }
+                .disabled(service.isBusy)
                 Button("Cancel", role: .cancel) { }
             } message: {
                 Text("Events will be added only to \(destinationCalendar?.title ?? "the local destination calendar"). The source will remain unchanged. Recurrence rules are copied as series; modified occurrences are applied where EventKit exposes enough information. Invitation participants are copied as text, not as live invitees.")
