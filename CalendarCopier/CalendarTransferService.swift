@@ -206,7 +206,7 @@ private final class CalendarTransferWorker: @unchecked Sendable {
             counts.eventsScanned += 1
             autoreleasepool {
                 do {
-                    try process(
+                    try self.process(
                         sourceEvent,
                         eventStore: eventStore,
                         destination: destination,
@@ -331,9 +331,6 @@ private final class CalendarTransferWorker: @unchecked Sendable {
         }
 
         let seriesIdentifier = masterEvent.calendarItemIdentifier
-            ?? masterEvent.eventIdentifier
-            ?? sourceOccurrence.eventIdentifier
-            ?? "unknown-series"
 
         let seriesMarker = markerURL(
             kind: "series",
@@ -425,8 +422,6 @@ private final class CalendarTransferWorker: @unchecked Sendable {
         counts: Counts
     ) throws {
         let itemIdentifier = sourceEvent.calendarItemIdentifier
-            ?? sourceEvent.eventIdentifier
-            ?? "unknown-event"
         let start = Int64(sourceEvent.startDate.timeIntervalSince1970)
         let identity = "\(sourceCalendarID)|\(destinationCalendarID)|\(itemIdentifier)|\(start)"
         let marker = markerURL(kind: "single", identity: identity, directory: historyDirectory)
