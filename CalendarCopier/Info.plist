@@ -17,13 +17,13 @@
     <key>CFBundleShortVersionString</key>
     <string>1.0</string>
     <key>CFBundleVersion</key>
-    <string>1</string>
+    <string>2</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
     <key>NSCalendarsFullAccessUsageDescription</key>
-    <string>Calendar Copier needs access to read your calendars and copy selected events into another calendar. It never deletes your original events.</string>
+    <string>Calendar Copier needs access to read and copy events between calendars stored locally on this iPhone. It does not use cloud calendars.</string>
     <key>NSCalendarsUsageDescription</key>
-    <string>Calendar Copier needs access to read your calendars and copy selected events into another calendar.</string>
+    <string>Calendar Copier needs access to read and copy events between calendars stored locally on this iPhone. It does not use cloud calendars.</string>
     <key>UILaunchScreen</key>
     <dict/>
     <key>UISupportedInterfaceOrientations</key>
