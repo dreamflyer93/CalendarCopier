@@ -1,32 +1,62 @@
 // !$*UTF8*$!
 {
- archiveVersion = 1;
- classes = {};
- objectVersion = 56;
- objects = {
-  A10000000000000000000001 /* Project object */ = {isa = PBXProject; attributes = {BuildIndependentTargetsInParallel = 1; LastUpgradeCheck = 1500; TargetAttributes = {A10000000000000000000002 = {CreatedOnToolsVersion = 15.0; }; }; }; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, Base,); mainGroup = A10000000000000000000003; productRefGroup = A10000000000000000000004; projectDirPath = ""; projectRoot = ""; targets = (A10000000000000000000002,); };
-  A10000000000000000000003 /* Main Group */ = {isa = PBXGroup; children = (A10000000000000000000005, A10000000000000000000006, A10000000000000000000004,); sourceTree = "<group>"; };
-  A10000000000000000000004 /* Products */ = {isa = PBXGroup; children = (A10000000000000000000007,); name = Products; sourceTree = "<group>"; };
-  A10000000000000000000005 /* Sources */ = {isa = PBXGroup; children = (A10000000000000000000011, A10000000000000000000012, A10000000000000000000013,); path = CalendarCopier; sourceTree = "<group>"; };
-  A10000000000000000000006 /* Supporting Files */ = {isa = PBXGroup; children = (A10000000000000000000014,); name = "Supporting Files"; path = CalendarCopier; sourceTree = "<group>"; };
-  A10000000000000000000007 /* CalendarCopier.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CalendarCopier.app; sourceTree = BUILT_PRODUCTS_DIR; };
-  A10000000000000000000008 /* Project config list */ = {isa = XCConfigurationList; buildConfigurations = (A10000000000000000000021, A10000000000000000000022,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
-  A10000000000000000000009 /* Target config list */ = {isa = XCConfigurationList; buildConfigurations = (A10000000000000000000023, A10000000000000000000024,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
-  A10000000000000000000011 /* CalendarCopierApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarCopierApp.swift; sourceTree = "<group>"; };
-  A10000000000000000000012 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-  A10000000000000000000013 /* CalendarTransferService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTransferService.swift; sourceTree = "<group>"; };
-  A10000000000000000000014 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-  A10000000000000000000015 /* Sources build phase */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000031, A10000000000000000000032, A10000000000000000000033,); runOnlyForDeploymentPostprocessing = 0; };
-  A10000000000000000000016 /* Frameworks build phase */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-  A10000000000000000000017 /* Resources build phase */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-  A10000000000000000000018 /* App target */ = {isa = PBXNativeTarget; buildConfigurationList = A10000000000000000000009; buildPhases = (A10000000000000000000015, A10000000000000000000016, A10000000000000000000017,); buildRules = (); dependencies = (); name = CalendarCopier; productName = CalendarCopier; productReference = A10000000000000000000007; productType = "com.apple.product-type.application"; };
-  A10000000000000000000021 /* Project Debug */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ENABLE_MODULES = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SDKROOT = iphoneos; SWIFT_VERSION = 5.0; }; name = Debug; };
-  A10000000000000000000022 /* Project Release */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ENABLE_MODULES = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SDKROOT = iphoneos; SWIFT_VERSION = 5.0; }; name = Release; };
-  A10000000000000000000023 /* Target Debug */ = {isa = XCBuildConfiguration; buildSettings = {GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = CalendarCopier/Info.plist; PRODUCT_BUNDLE_IDENTIFIER = com.example.CalendarCopier; PRODUCT_NAME = "$(TARGET_NAME)"; TARGETED_DEVICE_FAMILY = "1"; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.0; CODE_SIGN_STYLE = Automatic; }; name = Debug; };
-  A10000000000000000000024 /* Project Release */ = {isa = XCBuildConfiguration; buildSettings = {GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = CalendarCopier/Info.plist; PRODUCT_BUNDLE_IDENTIFIER = com.example.CalendarCopier; PRODUCT_NAME = "$(TARGET_NAME)"; TARGETED_DEVICE_FAMILY = "1"; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.0; CODE_SIGN_STYLE = Automatic; }; name = Release; };
-  A10000000000000000000031 /* app source in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000011; };
-  A10000000000000000000032 /* view source in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000012; };
-  A10000000000000000000033 /* service source in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000013; };
- };
- rootObject = A10000000000000000000001;
+	archiveVersion = 1;
+	classes = {};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A10000000000000000000031 /* CalendarCopierApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000011 /* CalendarCopierApp.swift */; };
+		A10000000000000000000032 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000012 /* ContentView.swift */; };
+		A10000000000000000000033 /* CalendarTransferService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000013 /* CalendarTransferService.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A10000000000000000000007 /* CalendarCopier.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CalendarCopier.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000011 /* CalendarCopierApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarCopierApp.swift; sourceTree = "<group>"; };
+		A10000000000000000000012 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		A10000000000000000000013 /* CalendarTransferService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarTransferService.swift; sourceTree = "<group>"; };
+		A10000000000000000000014 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A10000000000000000000016 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A10000000000000000000003 = {isa = PBXGroup; children = (A10000000000000000000005, A10000000000000000000006, A10000000000000000000004,); sourceTree = "<group>"; };
+		A10000000000000000000004 /* Products */ = {isa = PBXGroup; children = (A10000000000000000000007,); name = Products; sourceTree = "<group>"; };
+		A10000000000000000000005 /* Sources */ = {isa = PBXGroup; children = (A10000000000000000000011, A10000000000000000000012, A10000000000000000000013,); path = CalendarCopier; sourceTree = "<group>"; };
+		A10000000000000000000006 /* Supporting Files */ = {isa = PBXGroup; children = (A10000000000000000000014,); name = "Supporting Files"; path = CalendarCopier; sourceTree = "<group>"; };
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A10000000000000000000018 /* CalendarCopier */ = {isa = PBXNativeTarget; buildConfigurationList = A10000000000000000000009 /* Build configuration list for PBXNativeTarget */; buildPhases = (A10000000000000000000015 /* Sources */, A10000000000000000000016 /* Frameworks */, A10000000000000000000017 /* Resources */,); buildRules = (); dependencies = (); name = CalendarCopier; productName = CalendarCopier; productReference = A10000000000000000000007 /* CalendarCopier.app */; productType = "com.apple.product-type.application"; };
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A10000000000000000000001 /* Project object */ = {isa = PBXProject; attributes = {BuildIndependentTargetsInParallel = 1; LastUpgradeCheck = 1500; TargetAttributes = {A10000000000000000000018 = {CreatedOnToolsVersion = 15.0; }; }; }; buildConfigurationList = A10000000000000000000008 /* Build configuration list for PBXProject */; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, Base,); mainGroup = A10000000000000000000003; productRefGroup = A10000000000000000000004; projectDirPath = ""; projectRoot = ""; targets = (A10000000000000000000018 /* CalendarCopier */,); };
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A10000000000000000000017 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A10000000000000000000015 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000031 /* CalendarCopierApp.swift in Sources */, A10000000000000000000032 /* ContentView.swift in Sources */, A10000000000000000000033 /* CalendarTransferService.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A10000000000000000000021 /* Project Debug */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ENABLE_MODULES = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SDKROOT = iphoneos; SWIFT_VERSION = 5.0; }; name = Debug; };
+		A10000000000000000000022 /* Project Release */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ENABLE_MODULES = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SDKROOT = iphoneos; SWIFT_VERSION = 5.0; }; name = Release; };
+		A10000000000000000000023 /* Target Debug */ = {isa = XCBuildConfiguration; buildSettings = {GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = CalendarCopier/Info.plist; PRODUCT_BUNDLE_IDENTIFIER = com.example.CalendarCopier; PRODUCT_NAME = "$(TARGET_NAME)"; TARGETED_DEVICE_FAMILY = "1"; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.0; CODE_SIGN_STYLE = Automatic; }; name = Debug; };
+		A10000000000000000000024 /* Target Release */ = {isa = XCBuildConfiguration; buildSettings = {GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = CalendarCopier/Info.plist; PRODUCT_BUNDLE_IDENTIFIER = com.example.CalendarCopier; PRODUCT_NAME = "$(TARGET_NAME)"; TARGETED_DEVICE_FAMILY = "1"; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.0; CODE_SIGN_STYLE = Automatic; }; name = Release; };
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A10000000000000000000008 /* Build configuration list for PBXProject */ = {isa = XCConfigurationList; buildConfigurations = (A10000000000000000000021 /* Project Debug */, A10000000000000000000022 /* Project Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		A10000000000000000000009 /* Build configuration list for PBXNativeTarget */ = {isa = XCConfigurationList; buildConfigurations = (A10000000000000000000023 /* Target Debug */, A10000000000000000000024 /* Target Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+/* End XCConfigurationList section */
+	};
+	rootObject = A10000000000000000000001 /* Project object */;
 }
