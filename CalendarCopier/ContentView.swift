@@ -67,7 +67,7 @@ struct ContentView: View {
                         }
 
                         Button {
-                            Task { await service.preview(source: sourceCalendar, destination: destinationCalendar) }
+                            service.preview(source: sourceCalendar, destination: destinationCalendar)
                         } label: {
                             Label("Preview transfer", systemImage: "list.magnifyingglass")
                         }
@@ -75,10 +75,8 @@ struct ContentView: View {
                                   sourceID == destinationID || service.isBusy)
 
                         Button {
-                            Task {
-                                await service.preview(source: sourceCalendar, destination: destinationCalendar)
-                                showingConfirmation = true
-                            }
+                            service.preview(source: sourceCalendar, destination: destinationCalendar)
+                            showingConfirmation = true
                         } label: {
                             Label("Copy all events", systemImage: "doc.on.doc")
                                 .frame(maxWidth: .infinity)
