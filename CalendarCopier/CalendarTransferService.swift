@@ -3,8 +3,8 @@ import Combine
 import CryptoKit
 import EventKit
 
-/// Copies events only between calendars whose EventKit source is local to this device.
-/// No networking, analytics, remote logging, or third-party SDKs are used by this target.
+/// Copies calendar events on-device. Exchange calendars are read-only sources;
+/// only EventKit local calendars may receive copies.
 @MainActor
 final class CalendarTransferService: ObservableObject {
     @Published private(set) var sourceCalendars: [EKCalendar] = []
@@ -16,7 +16,7 @@ final class CalendarTransferService: ObservableObject {
     @Published private(set) var lastReport: TransferReport?
 
     private let store = EKEventStore()
-    private let historyFileName = "completed-occurrences.plist"
+    private let historyDirectoryName = "completed-occurrences"
 
     struct TransferReport {
         let copied: Int
@@ -57,11 +57,8 @@ final class CalendarTransferService: ObservableObject {
     }
 
     func preview(source: EKCalendar?, destination: EKCalendar?) {
-        guard validateLocalDestinationAndAllowedSource(source: source, destination: destination) else {
-            previewCount = 0
-            return
-        }
-        guard let source else {
+        guard validateLocalDestinationAndAllowedSource(source: source, destination: destination),
+              let source else {
             previewCount = 0
             return
         }
@@ -79,12 +76,21 @@ final class CalendarTransferService: ObservableObject {
         }
 
         guard source.calendarIdentifier != destination.calendarIdentifier else {
-            statusMessage = "Choose two different local calendars."
+            statusMessage = "Choose two different calendars."
             return
         }
 
         guard destination.allowsContentModifications else {
             statusMessage = "The destination calendar is read-only. Choose a writable local calendar."
+            return
+        }
+
+        // Prepare local duplicate history before creating any destination events.
+        let historyDirectory: URL
+        do {
+            historyDirectory = try historyDirectoryURL()
+        } catch {
+            statusMessage = "Local duplicate-prevention storage is unavailable. No events were copied."
             return
         }
 
@@ -97,14 +103,6 @@ final class CalendarTransferService: ObservableObject {
         let events = store.events(matching: predicate).sorted { $0.startDate < $1.startDate }
         previewCount = events.count
 
-        var completed: Set<String>
-        do {
-            completed = try loadCompletedKeys()
-        } catch {
-            statusMessage = "The local duplicate-prevention history could not be read. No events were copied. Reinstalling or clearing app data may reset this history."
-            return
-        }
-
         var copied = 0
         var skipped = 0
         var failed = 0
@@ -112,8 +110,14 @@ final class CalendarTransferService: ObservableObject {
         var stoppedBecauseHistoryCouldNotBeSaved = false
 
         for (index, sourceEvent) in events.enumerated() {
-            let key = occurrenceKey(event: sourceEvent, sourceCalendarID: source.calendarIdentifier)
-            if completed.contains(key) {
+            let key = occurrenceKey(
+                event: sourceEvent,
+                sourceCalendarID: source.calendarIdentifier,
+                destinationCalendarID: destination.calendarIdentifier
+            )
+            let markerURL = historyDirectory.appendingPathComponent(key, isDirectory: false)
+
+            if FileManager.default.fileExists(atPath: markerURL.path) {
                 skipped += 1
                 continue
             }
@@ -121,8 +125,8 @@ final class CalendarTransferService: ObservableObject {
             let destinationEvent = makeCopy(of: sourceEvent, in: destination)
 
             do {
-                // Saving to a local source avoids writing event content to an iCloud,
-                // Exchange, CalDAV, or other provider-managed calendar.
+                // A local destination prevents this app from writing copied event
+                // content to Exchange, iCloud, CalDAV, or another account provider.
                 try store.save(destinationEvent, span: .thisEvent, commit: true)
                 copied += 1
             } catch {
@@ -133,30 +137,28 @@ final class CalendarTransferService: ObservableObject {
                 continue
             }
 
-            completed.insert(key)
             do {
-                // Persist after each event so an app interruption is less likely to
-                // cause already-saved events to be copied again on the next run.
-                try saveCompletedKeys(completed)
+                try saveCompletionMarker(at: markerURL)
             } catch {
+                // The event has already been saved. Stop immediately because retrying
+                // without a durable marker could create a duplicate next time.
                 stoppedBecauseHistoryCouldNotBeSaved = true
-                details.append("Stopped early: the local duplicate-prevention history could not be saved. Check the destination before retrying.")
+                details.append("Stopped early: local duplicate-prevention history could not be saved. Check the destination before retrying.")
                 break
             }
 
             if index % 25 == 0 {
-                statusMessage = "Copying local events… \(copied + skipped + failed) of \(events.count) processed."
+                statusMessage = "Copying events… \(copied + skipped + failed) of \(events.count) processed."
                 await Task.yield()
             }
         }
 
-        let report = TransferReport(
+        lastReport = TransferReport(
             copied: copied,
             skipped: skipped,
             failed: failed,
             details: details
         )
-        lastReport = report
 
         if stoppedBecauseHistoryCouldNotBeSaved {
             statusMessage = "Stopped after \(copied) copied. Check the destination before retrying; duplicate protection could not be updated."
@@ -174,13 +176,16 @@ final class CalendarTransferService: ObservableObject {
     }
 
     @discardableResult
-    private func validateLocalDestinationAndAllowedSource(source: EKCalendar?, destination: EKCalendar?) -> Bool {
+    private func validateLocalDestinationAndAllowedSource(
+        source: EKCalendar?,
+        destination: EKCalendar?
+    ) -> Bool {
         guard let source, let destination else {
             statusMessage = "Choose both calendars."
             return false
         }
         guard isAllowedSource(source) else {
-            statusMessage = "Privacy protection: only local or Exchange calendars can be used as sources."
+            statusMessage = "Only local or Exchange calendars can be used as sources."
             return false
         }
         guard isLocalCalendar(destination) else {
@@ -222,19 +227,23 @@ final class CalendarTransferService: ObservableObject {
         return (start, end)
     }
 
-    /// Hashes identifiers before writing them to local app storage; no event text is stored here.
-    private func occurrenceKey(event: EKEvent, sourceCalendarID: String) -> String {
+    /// Hashes account/item identifiers plus the destination identifier. The cache
+    /// contains no event titles, notes, locations, or URLs.
+    private func occurrenceKey(
+        event: EKEvent,
+        sourceCalendarID: String,
+        destinationCalendarID: String
+    ) -> String {
         let itemID = event.calendarItemIdentifier
         let start = String(Int64(event.startDate.timeIntervalSince1970))
-        let identity = "\(sourceCalendarID)|\(itemID)|\(start)"
+        let identity = "\(sourceCalendarID)|\(destinationCalendarID)|\(itemID)|\(start)"
         let digest = SHA256.hash(data: Data(identity.utf8))
         return digest.map { String(format: "%02x", $0) }.joined()
     }
 
-    /// The Caches directory is used intentionally: this small, disposable ledger is not
-    /// essential user data and should not be included in device backups. iOS may purge it,
-    /// in which case duplicate suppression may reset.
-    private func historyFileURL() throws -> URL {
+    /// Caches are disposable and excluded from backup. If iOS purges this directory,
+    /// duplicate prevention resets; the app will explain this limitation in its README.
+    private func historyDirectoryURL() throws -> URL {
         let fileManager = FileManager.default
         guard let cachesDirectory = fileManager.urls(
             for: .cachesDirectory,
@@ -243,45 +252,31 @@ final class CalendarTransferService: ObservableObject {
             throw HistoryError.storageUnavailable
         }
 
-        let appCacheDirectory = cachesDirectory.appendingPathComponent(
-            "CalendarCopier",
+        let directory = cachesDirectory.appendingPathComponent(
+            historyDirectoryName,
             isDirectory: true
         )
         try fileManager.createDirectory(
-            at: appCacheDirectory,
+            at: directory,
             withIntermediateDirectories: true
         )
 
-        var directoryValues = URLResourceValues()
-        directoryValues.isExcludedFromBackup = true
-        var mutableDirectoryURL = appCacheDirectory
-        try mutableDirectoryURL.setResourceValues(directoryValues)
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        var mutableDirectory = directory
+        try mutableDirectory.setResourceValues(values)
 
-        return appCacheDirectory.appendingPathComponent(historyFileName)
+        return directory
     }
 
-    private func loadCompletedKeys() throws -> Set<String> {
-        let url = try historyFileURL()
-        guard FileManager.default.fileExists(atPath: url.path) else {
-            return []
-        }
-        let data = try Data(contentsOf: url)
-        let values = try PropertyListDecoder().decode([String].self, from: data)
-        return Set(values)
-    }
+    private func saveCompletionMarker(at url: URL) throws {
+        // Empty hashed marker file: no event content is persisted by the app.
+        try Data().write(to: url, options: [.atomic, .completeFileProtection])
 
-    private func saveCompletedKeys(_ keys: Set<String>) throws {
-        let url = try historyFileURL()
-        let data = try PropertyListEncoder().encode(keys.sorted())
-
-        // Complete file protection makes the ledger inaccessible while the iPhone is locked.
-        try data.write(to: url, options: [.atomic, .completeFileProtection])
-
-        // Reapply after every write because atomic replacement may reset resource values.
-        var fileValues = URLResourceValues()
-        fileValues.isExcludedFromBackup = true
-        var mutableFileURL = url
-        try mutableFileURL.setResourceValues(fileValues)
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        var mutableURL = url
+        try mutableURL.setResourceValues(values)
     }
 
     private enum HistoryError: Error {
