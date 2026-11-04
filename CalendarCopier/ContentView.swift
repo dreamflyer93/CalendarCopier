@@ -67,7 +67,7 @@ struct ContentView: View {
                         }
 
                         Button {
-                            service.preview(source: sourceCalendar, destination: destinationCalendar)
+                            Task { await service.preview(source: sourceCalendar, destination: destinationCalendar) }
                         } label: {
                             Label("Preview transfer", systemImage: "list.magnifyingglass")
                         }
@@ -75,10 +75,10 @@ struct ContentView: View {
                                   sourceID == destinationID || service.isBusy)
 
                         Button {
-                            // Refresh the count immediately before the confirmation dialog;
-                            // don't show a stale or zero count when the user skips Preview.
-                            service.preview(source: sourceCalendar, destination: destinationCalendar)
-                            showingConfirmation = true
+                            Task {
+                                await service.preview(source: sourceCalendar, destination: destinationCalendar)
+                                showingConfirmation = true
+                            }
                         } label: {
                             Label("Copy all events", systemImage: "doc.on.doc")
                                 .frame(maxWidth: .infinity)
@@ -99,6 +99,9 @@ struct ContentView: View {
                             reportRow("Copied", value: report.copied, color: .green)
                             reportRow("Already copied", value: report.skipped, color: .secondary)
                             reportRow("Failed", value: report.failed, color: .red)
+                            reportRow("Recurring series copied", value: report.recurringSeriesCopied, color: .secondary)
+                            reportRow("Modified occurrences preserved", value: report.detachedOccurrencesUpdated, color: .secondary)
+                            reportRow("Source events scanned", value: report.eventsScanned, color: .secondary)
                             ForEach(Array(report.details.enumerated()), id: \.offset) { item in
                                 Text(item.element)
                                     .font(.caption)
@@ -110,6 +113,10 @@ struct ContentView: View {
 
                 Section("Privacy") {
                     Text("This app contains no networking, analytics, advertising, remote logging, or third-party SDK code. It reads local and Exchange source calendars through EventKit, and writes copied events only to local iPhone calendars.")
+                        .font(.footnote)
+                    Text("Calendar queries run in the background in one-year windows using callback enumeration. The app does not hold the complete event range in memory.")
+                        .font(.footnote)
+                    Text("Attendees and the organiser cannot be recreated as live invitation participants with EventKit. Where iOS exposes them, their names, addresses, roles and RSVP states are copied as informational text into event notes. Provider-specific invitation metadata is not exposed by EventKit.")
                         .font(.footnote)
                     Text("Reading an Exchange calendar is performed through the iOS account integration. This app does not edit the Exchange source or send the copied events to Exchange. The iPhone and its account provider still control normal account synchronisation and device backups.")
                         .font(.footnote)
@@ -146,7 +153,7 @@ struct ContentView: View {
                 }
                 Button("Cancel", role: .cancel) { }
             } message: {
-                Text("Events will be added only to \(destinationCalendar?.title ?? "the local destination calendar"). The source will remain unchanged. Recurring events are copied as individual occurrences.")
+                Text("Events will be added only to \(destinationCalendar?.title ?? "the local destination calendar"). The source will remain unchanged. Recurrence rules are copied as series; modified occurrences are applied where EventKit exposes enough information. Invitation participants are copied as text, not as live invitees.")
             }
         }
     }
