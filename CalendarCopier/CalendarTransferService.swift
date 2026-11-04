@@ -7,7 +7,8 @@ import EventKit
 /// No networking, analytics, remote logging, or third-party SDKs are used by this target.
 @MainActor
 final class CalendarTransferService: ObservableObject {
-    @Published private(set) var calendars: [EKCalendar] = []
+    @Published private(set) var sourceCalendars: [EKCalendar] = []
+    @Published private(set) var destinationCalendars: [EKCalendar] = []
     @Published private(set) var permissionGranted = false
     @Published var statusMessage = "Grant calendar access to begin."
     @Published var isBusy = false
@@ -34,23 +35,29 @@ final class CalendarTransferService: ObservableObject {
             }
 
             reloadCalendars()
-            statusMessage = calendars.isEmpty
-                ? "No local calendars were found. Create an On My iPhone calendar in Calendar."
-                : "Choose two local calendars stored on this iPhone."
+            statusMessage = sourceCalendars.isEmpty
+                ? "No local or Exchange source calendars were found."
+                : (destinationCalendars.isEmpty
+                    ? "No local destination calendar was found. Create an On My iPhone calendar in Calendar."
+                    : "Choose a local or Exchange source and a local destination.")
         } catch {
             statusMessage = "Could not request calendar access: \(error.localizedDescription)"
         }
     }
 
-    /// Deliberately hides iCloud, Google/CalDAV, Exchange, subscribed, and other non-local calendars.
+    /// Exchange may be read as a source; only local calendars may receive copied data.
     func reloadCalendars() {
-        calendars = store.calendars(for: .event)
+        let available = store.calendars(for: .event)
+        sourceCalendars = available
+            .filter { isAllowedSource($0) }
+            .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+        destinationCalendars = available
             .filter { isLocalCalendar($0) }
             .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
     }
 
     func preview(source: EKCalendar?, destination: EKCalendar?) {
-        guard validateLocalCalendars(source: source, destination: destination) else {
+        guard validateLocalDestinationAndAllowedSource(source: source, destination: destination) else {
             previewCount = 0
             return
         }
@@ -66,7 +73,7 @@ final class CalendarTransferService: ObservableObject {
     }
 
     func copyAllEvents(source: EKCalendar?, destination: EKCalendar?) async {
-        guard validateLocalCalendars(source: source, destination: destination),
+        guard validateLocalDestinationAndAllowedSource(source: source, destination: destination),
               let source, let destination else {
             return
         }
@@ -162,14 +169,22 @@ final class CalendarTransferService: ObservableObject {
         calendar.source.sourceType == .local
     }
 
+    private func isAllowedSource(_ calendar: EKCalendar) -> Bool {
+        calendar.source.sourceType == .local || calendar.source.sourceType == .exchange
+    }
+
     @discardableResult
-    private func validateLocalCalendars(source: EKCalendar?, destination: EKCalendar?) -> Bool {
+    private func validateLocalDestinationAndAllowedSource(source: EKCalendar?, destination: EKCalendar?) -> Bool {
         guard let source, let destination else {
             statusMessage = "Choose both calendars."
             return false
         }
-        guard isLocalCalendar(source), isLocalCalendar(destination) else {
-            statusMessage = "Privacy protection: only calendars stored locally on this iPhone can be used."
+        guard isAllowedSource(source) else {
+            statusMessage = "Privacy protection: only local or Exchange calendars can be used as sources."
+            return false
+        }
+        guard isLocalCalendar(destination) else {
+            statusMessage = "Privacy protection: copied events can only be saved to a calendar stored locally on this iPhone."
             return false
         }
         return true
