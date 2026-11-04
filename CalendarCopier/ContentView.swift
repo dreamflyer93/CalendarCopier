@@ -75,7 +75,6 @@ struct ContentView: View {
                                   sourceID == destinationID || service.isBusy)
 
                         Button {
-                            service.preview(source: sourceCalendar, destination: destinationCalendar)
                             showingConfirmation = true
                         } label: {
                             Label("Copy all events", systemImage: "doc.on.doc")
@@ -140,7 +139,7 @@ struct ContentView: View {
             }
             .navigationTitle("Calendar Copier")
             .confirmationDialog(
-                "Copy \(service.previewCount) events?",
+                "Copy all matching events?",
                 isPresented: $showingConfirmation,
                 titleVisibility: .visible
             ) {
