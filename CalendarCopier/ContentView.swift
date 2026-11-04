@@ -8,19 +8,19 @@ struct ContentView: View {
     @State private var showingConfirmation = false
 
     private var sourceCalendar: EKCalendar? {
-        service.calendars.first { $0.calendarIdentifier == sourceID }
+        service.sourceCalendars.first { $0.calendarIdentifier == sourceID }
     }
 
     private var destinationCalendar: EKCalendar? {
-        service.calendars.first { $0.calendarIdentifier == destinationID }
+        service.destinationCalendars.first { $0.calendarIdentifier == destinationID }
     }
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    Label("Local-calendar-only transfer", systemImage: "iphone")
-                    Text("Only calendars stored locally on this iPhone are listed. iCloud, Google, Exchange, CalDAV, and subscribed calendars are deliberately excluded.")
+                    Label("Exchange source → local iPhone destination", systemImage: "iphone")
+                    Text("You can read events from local or Exchange calendars. Copied events can be saved only to a calendar stored locally on this iPhone. Exchange is never used as a destination.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     Text("Original events are never changed or deleted.")
@@ -37,12 +37,24 @@ struct ContentView: View {
                         }
                     }
                 } else {
-                    Section("Source calendar (local)") {
-                        calendarPicker(selection: $sourceID, placeholder: "Choose source")
+                    Section("Source calendar (local or Exchange)") {
+                        Picker("Choose source", selection: $sourceID) {
+                            Text("Choose source").tag(String?.none)
+                            ForEach(service.sourceCalendars, id: \.calendarIdentifier) { calendar in
+                                Text(sourceCalendarLabel(calendar))
+                                    .tag(Optional(calendar.calendarIdentifier))
+                            }
+                        }
                     }
 
-                    Section("Destination calendar (local)") {
-                        calendarPicker(selection: $destinationID, placeholder: "Choose destination")
+                    Section("Destination calendar (local only)") {
+                        Picker("Choose destination", selection: $destinationID) {
+                            Text("Choose destination").tag(String?.none)
+                            ForEach(service.destinationCalendars, id: \.calendarIdentifier) { calendar in
+                                Text(calendar.title)
+                                    .tag(Optional(calendar.calendarIdentifier))
+                            }
+                        }
                     }
 
                     Section("Transfer") {
@@ -97,9 +109,9 @@ struct ContentView: View {
                 }
 
                 Section("Privacy") {
-                    Text("This app contains no networking, analytics, advertising, remote logging, or third-party SDK code. It reads and writes only local EventKit calendars.")
+                    Text("This app contains no networking, analytics, advertising, remote logging, or third-party SDK code. It reads local and Exchange source calendars through EventKit, and writes copied events only to local iPhone calendars.")
                         .font(.footnote)
-                    Text("iOS backups and background activity from other apps or accounts are controlled by iOS and are outside this app's control. For a strictly offline transfer, use Airplane Mode and make sure Wi-Fi is also off.")
+                    Text("Reading an Exchange calendar is performed through the iOS account integration. This app does not edit the Exchange source or send the copied events to Exchange. The iPhone and its account provider still control normal account synchronisation and device backups.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -109,12 +121,12 @@ struct ContentView: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     if service.permissionGranted {
-                        Button("Refresh local calendar list") {
+                        Button("Refresh calendar list") {
                             service.reloadCalendars()
-                            if !service.calendars.contains(where: { $0.calendarIdentifier == sourceID }) {
+                            if !service.sourceCalendars.contains(where: { $0.calendarIdentifier == sourceID }) {
                                 sourceID = nil
                             }
-                            if !service.calendars.contains(where: { $0.calendarIdentifier == destinationID }) {
+                            if !service.destinationCalendars.contains(where: { $0.calendarIdentifier == destinationID }) {
                                 destinationID = nil
                             }
                         }
@@ -139,15 +151,9 @@ struct ContentView: View {
         }
     }
 
-    @ViewBuilder
-    private func calendarPicker(selection: Binding<String?>, placeholder: String) -> some View {
-        Picker(placeholder, selection: selection) {
-            Text(placeholder).tag(String?.none)
-            ForEach(service.calendars, id: \.calendarIdentifier) { calendar in
-                Text(calendar.title)
-                    .tag(Optional(calendar.calendarIdentifier))
-            }
-        }
+    private func sourceCalendarLabel(_ calendar: EKCalendar) -> String {
+        let type = calendar.source.sourceType == .exchange ? "Exchange" : "On My iPhone"
+        return "\(calendar.title) — \(type)"
     }
 
     private func reportRow(_ title: String, value: Int, color: Color) -> some View {
