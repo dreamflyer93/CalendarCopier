@@ -5,13 +5,21 @@ on:
   push:
     branches: [ "main" ]
 
+# Keep the workflow token read-only. Artifact upload uses the runner's
+# artifact runtime credentials, not repository write permissions.
+permissions:
+  contents: read
+
 jobs:
   build:
-    # Public repository: use GitHub-hosted macOS/Xcode runner.
     runs-on: macos-15
+    timeout-minutes: 30
     steps:
-      - name: Check out source
-        uses: actions/checkout@v4
+      - name: Check out source (pinned)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Run privacy source audit
+        run: bash scripts/privacy-audit.sh
 
       - name: Show Xcode version
         run: xcodebuild -version
@@ -37,8 +45,8 @@ jobs:
           cd "$RUNNER_TEMP/ipa"
           /usr/bin/zip -qry "$GITHUB_WORKSPACE/CalendarCopier-unsigned.ipa" Payload
 
-      - name: Upload IPA
-        uses: actions/upload-artifact@v4
+      - name: Upload IPA (pinned)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: CalendarCopier-unsigned-IPA
           path: CalendarCopier-unsigned.ipa
